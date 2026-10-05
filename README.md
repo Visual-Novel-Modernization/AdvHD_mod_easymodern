@@ -363,19 +363,27 @@ Outputs:
    AdvHD_EasyModern.exe -t AdvHD_unpacked.exe
    AdvHD_EasyModern.exe --target AdvHD_unpacked.exe
    ```
-2. **Configuration File Override (`launcher.ini`)**:
-   For packaging distributions where users launch via double-click without a command prompt, place a `launcher.ini` beside the launcher:
+2. **Configuration File Override (`AdvHD_EasyModern.ini`)**:
+   For packaging distributions where users launch via double-click without a command prompt, place an
+   `AdvHD_EasyModern.ini` beside the launcher:
    ```ini
    [Launcher]
    Target=AdvHD_unpacked.exe
    ```
    *(Alternatively, a single-line text file containing the `.exe` filename is also recognized).*
+
+   > **Do not call this file `launcher.ini`.** WillPlus titles ship their own UTF-16LE
+   > `launcher.INI`, which the game's own `launcher.exe` reads to find `GAMEEXE`, `MAINIMAGE` and
+   > the manual. Windows is case-insensitive, so writing `launcher.ini` **overwrites the game's
+   > launcher configuration** and breaks the stock launcher. The old name is still read for
+   > backwards compatibility — the reader rejects the game's own file, whose first line is
+   > `[LAUNCHER]` rather than a `*.exe` — but never write it yourself.
 3. **Wildcard detection**:
    Failing both of the above, the launcher takes the first `AdvHD*.exe` sitting next to it, skipping
    itself.
 
    If your game executable is named something else, change `TARGET_PATTERN` near the top of
-   `launcher/launcher.cpp` and rebuild, or add a `launcher.ini` pinning the target.
+   `launcher/launcher.cpp` and rebuild, or add an `AdvHD_EasyModern.ini` pinning the target.
 
 ### Hook Discovery and Fallback
 * Probes for `jxl_hook.dll` and `av1_hook.dll` in its directory before injecting.

@@ -7,8 +7,17 @@
 //
 // It has to know which exe to start, and it'll take the answer three ways, in order:
 //   1. the command line - AdvHD_EasyModern.exe MyGame.exe | -t MyGame.exe | --target MyGame.exe
-//   2. launcher.ini     - [Launcher] Target=MyGame.exe, or a bare filename on line one
+//   2. AdvHD_EasyModern.ini - [Launcher] Target=MyGame.exe, or a bare filename on line one
 //   3. wildcard        - the first "AdvHD*.exe" next to this launcher
+//
+// NOTE on the config file name: it used to be launcher.ini. That name is a landmine on
+// WillPlus titles, which ship their own UTF-16LE launcher.INI (read by the game's own
+// launcher.exe to find GAMEEXE, MAINIMAGE, the manual, and so on). Windows is
+// case-insensitive, so a mod config called launcher.ini does not sit next to the game's
+// file - it IS the game's file, and a deployment that writes one silently destroys the
+// game's launcher configuration. CONFIG_NAME therefore avoids that name entirely.
+// LEGACY_CONFIG_NAME is still read for compatibility; the reader rejects the game's own
+// launcher.INI on its own, since its first line is "[LAUNCHER]" and not a *.exe.
 
 #include <windows.h>
 #include <stdio.h>
@@ -112,6 +121,11 @@ static bool InjectDll(HANDLE hProcess, const char* dllPath, const char* hookName
 // ============================================================================
 #define TARGET_PATTERN "AdvHD*.exe"
 
+// Optional config file, parsed by ReadConfigTarget().
+// CONFIG_NAME must NOT be "launcher.ini" - see the note at the top of this file.
+#define CONFIG_NAME        "AdvHD_EasyModern.ini"
+#define LEGACY_CONFIG_NAME "launcher.ini"
+
 // Base name of this launcher, for the usage text.
 static const char* SelfName() {
     static char name[MAX_PATH] = {0};
@@ -164,12 +178,13 @@ int main(int argc, char** argv) {
             printf("  %s --target <target.exe>\n\n", SelfName());
             printf("Target selection, in order:\n");
             printf("  1. the command line, above\n");
-            printf("  2. launcher.ini beside this exe:\n");
+            printf("  2. %s beside this exe:\n", CONFIG_NAME);
             printf("       [Launcher]\n");
             printf("       Target=YourGame.exe\n");
             printf("  3. the first '%s' sitting beside this exe\n\n", TARGET_PATTERN);
-            printf("Your game exe is named something else? Edit TARGET_PATTERN in\n");
-            printf("launcher.cpp and rebuild. That is the supported way to add one.\n");
+            printf("Your game exe is named something else? Either write a %s,\n", CONFIG_NAME);
+            printf("or edit TARGET_PATTERN in launcher.cpp and rebuild. That is the\n");
+            printf("supported way to add one.\n");
             return 0;
         } else if ((strcmp(argv[i], "-t") == 0 || strcmp(argv[i], "--target") == 0) && i + 1 < argc) {
             cliTarget = argv[++i];
@@ -191,18 +206,32 @@ int main(int argc, char** argv) {
         printf("[launcher] Target executable selected via CLI argument: %s\n", cliTarget);
     }
 
-    // Second choice: launcher.ini, for the double-click crowd
+    // Second choice: the config file, for the double-click crowd.
+    // Checked in order: CONFIG_NAME, then the legacy launcher.ini.
     if (exePath[0] == 0) {
         char iniPath[MAX_PATH];
         char configTarget[MAX_PATH] = {0};
-        FullPathNextToSelf("launcher.ini", iniPath, MAX_PATH);
+        const char* usedConfig = NULL;
+
+        FullPathNextToSelf(CONFIG_NAME, iniPath, MAX_PATH);
         if (ReadConfigTarget(iniPath, configTarget, MAX_PATH)) {
+            usedConfig = CONFIG_NAME;
+        } else {
+            // Legacy name. ReadConfigTarget only accepts this when it actually looks like a
+            // mod config, so the game's own launcher.INI (first line "[LAUNCHER]") is ignored.
+            FullPathNextToSelf(LEGACY_CONFIG_NAME, iniPath, MAX_PATH);
+            if (ReadConfigTarget(iniPath, configTarget, MAX_PATH)) {
+                usedConfig = LEGACY_CONFIG_NAME;
+            }
+        }
+
+        if (usedConfig != NULL) {
             FullPathNextToSelf(configTarget, exePath, MAX_PATH);
             if (!CheckFileExists(exePath)) {
-                printf("[launcher] ERROR: Executable specified in launcher.ini not found: %s\n", exePath);
+                printf("[launcher] ERROR: Executable specified in %s not found: %s\n", usedConfig, exePath);
                 return 2;
             }
-            printf("[launcher] Target executable selected via launcher.ini: %s\n", configTarget);
+            printf("[launcher] Target executable selected via %s: %s\n", usedConfig, configTarget);
         }
     }
 
@@ -216,7 +245,7 @@ int main(int argc, char** argv) {
     if (exePath[0] == 0 || !CheckFileExists(exePath)) {
         printf("[launcher] ERROR: no '%s' found next to this launcher.\n", TARGET_PATTERN);
         printf("  Point it at your game:  %s <yourgame.exe>\n", SelfName());
-        printf("  Or drop a launcher.ini beside it with:\n");
+        printf("  Or drop a %s beside it with:\n", CONFIG_NAME);
         printf("      [Launcher]\n");
         printf("      Target=yourgame.exe\n");
         printf("  To change the search pattern itself, edit TARGET_PATTERN in\n");
