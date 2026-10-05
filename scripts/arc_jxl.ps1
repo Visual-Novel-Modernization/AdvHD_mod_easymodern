@@ -119,26 +119,38 @@ foreach ($f in $files) {
     Write-Host "        $($unpacked.Entries) entries in $([Math]::Round($sw.Elapsed.TotalSeconds, 1))s"
 
     # 2. convert PNG -> JXL, in place ----------------------------------------
-    $pngs = @(Get-ChildItem -LiteralPath $unpackDir -Filter '*.png' -File -Recurse)
-    Write-Host "  [2/3] converting $($pngs.Count) PNG -> JXL..."
+    # Select by MAGIC BYTES, not by extension. AdvHD archives carry PNG payloads
+    # under extensions like .MOS as well as .png, and a *.png glob silently skips
+    # every one of them. Anything already carrying JXL magic (raw FF 0A or the
+    # container box 00 00 00 0C 'JXL ') is left alone.
+    $candidates = @()
+    foreach ($f in (Get-ChildItem -LiteralPath $unpackDir -File -Recurse)) {
+        if ($f.Length -lt 8) { continue }
+        $head = New-Object byte[] 8
+        $hs = [IO.File]::OpenRead($f.FullName)
+        try { [void]$hs.Read($head, 0, 8) } finally { $hs.Dispose() }
+        $isPng = ($head[0] -eq 0x89 -and $head[1] -eq 0x50 -and $head[2] -eq 0x4E -and $head[3] -eq 0x47)
+        if ($isPng) { $candidates += $f }
+    }
+    Write-Host "  [2/3] converting $($candidates.Count) PNG payloads -> JXL..."
 
     $sw.Restart()
     $done = 0
     $converted = 0
-    foreach ($png in $pngs) {
+    foreach ($png in $candidates) {
         $tmpJxl = $png.FullName + '.tmp.jxl'
         & $CjxlPath $png.FullName $tmpJxl -q $Quality --effort $Effort 2>&1 | Out-Null
         if ($LASTEXITCODE -eq 0 -and (Test-Path -LiteralPath $tmpJxl)) {
-            # Replace the .png file in place. The name on disk stays .png, which is
-            # what keeps the manifest entry name untouched during repack.
+            # Replace the payload in place. The file NAME on disk is unchanged, which
+            # is what keeps the manifest entry name untouched during repack.
             Move-Item -LiteralPath $tmpJxl -Destination $png.FullName -Force
             $converted++
         } elseif (Test-Path -LiteralPath $tmpJxl) {
             Remove-Item -LiteralPath $tmpJxl -Force
         }
         $done++
-        if ($done % 100 -eq 0 -or $done -eq $pngs.Count) {
-            Write-Host "        $done / $($pngs.Count)"
+        if ($done % 100 -eq 0 -or $done -eq $candidates.Count) {
+            Write-Host "        $done / $($candidates.Count)"
         }
     }
     $sw.Stop()
