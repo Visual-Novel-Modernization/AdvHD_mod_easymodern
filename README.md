@@ -321,20 +321,20 @@ Each target can also be built on its own with `scripts\build_jxl.bat`, `scripts\
 Outputs:
 * `jxl_hook/jxl_hook.dll` (Target: 32-bit PE DLL)
 * `av1_hook/av1_hook.dll` (Target: 32-bit PE DLL)
-* `launcher/game_launcher.exe` (Target: 32-bit PE Executable)
+* `launcher/AdvHD_EasyModern.exe` (Target: 32-bit PE Executable)
 
 ---
 
 ## Deployment & Game Packaging
 
 ### Target Executable Selection
-`game_launcher.exe` resolves the target game binary via a 3-tier precedence cascade:
+`AdvHD_EasyModern.exe` resolves the target game binary via a 3-tier precedence cascade:
 1. **Command-line arguments**:
    Specify the target binary directly via CLI flags:
    ```cmd
-   game_launcher.exe AdvHD_unpacked.exe
-   game_launcher.exe -t AdvHD_unpacked.exe
-   game_launcher.exe --target AdvHD_unpacked.exe
+   AdvHD_EasyModern.exe AdvHD_unpacked.exe
+   AdvHD_EasyModern.exe -t AdvHD_unpacked.exe
+   AdvHD_EasyModern.exe --target AdvHD_unpacked.exe
    ```
 2. **Configuration File Override (`launcher.ini`)**:
    For packaging distributions where users launch via double-click without a command prompt, place a `launcher.ini` beside the launcher:
@@ -352,7 +352,7 @@ Outputs:
 * If either hook DLL is missing, the launcher logs it and continues without error, so texture modding alone, video modding alone, or the stock engine all work.
 
 ### Placing the Files
-Place `game_launcher.exe`, `jxl_hook.dll` and `av1_hook.dll` alongside the game executable. The libjxl runtime DLLs from Step 4 go in the same folder, the LAV Filters from Step 3 go in a `lav\` subfolder, and the transcoded `OP.dat` and `ED_01.dat` ~ `ED_05.dat` replace the original movie files. Launch the game by running `game_launcher.exe`.
+Place `AdvHD_EasyModern.exe`, `jxl_hook.dll` and `av1_hook.dll` alongside the game executable. The libjxl runtime DLLs from Step 4 go in the same folder, the LAV Filters from Step 3 go in a `lav\` subfolder, and the transcoded `OP.dat` and `ED_01.dat` ~ `ED_05.dat` replace the original movie files. Launch the game by running `AdvHD_EasyModern.exe`.
 
 ---
 
