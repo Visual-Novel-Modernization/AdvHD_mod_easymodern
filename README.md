@@ -370,9 +370,12 @@ Outputs:
    Target=AdvHD_unpacked.exe
    ```
    *(Alternatively, a single-line text file containing the `.exe` filename is also recognized).*
-3. **Automatic detection**:
-   If neither CLI parameters nor `launcher.ini` are provided, the launcher scans for standard binaries in sequence:
-   `AdvHD_CN.exe` -> `AdvHD_CHS.exe` -> `AdvHD_crack.exe` -> `AdvHD.exe`.
+3. **Wildcard detection**:
+   Failing both of the above, the launcher takes the first `AdvHD*.exe` sitting next to it, skipping
+   itself.
+
+   If your game executable is named something else, change `TARGET_PATTERN` near the top of
+   `launcher/launcher.cpp` and rebuild, or add a `launcher.ini` pinning the target.
 
 ### Hook Discovery and Fallback
 * Probes for `jxl_hook.dll` and `av1_hook.dll` in its directory before injecting.

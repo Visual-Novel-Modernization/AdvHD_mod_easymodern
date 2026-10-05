@@ -8,7 +8,7 @@
 // It has to know which exe to start, and it'll take the answer three ways, in order:
 //   1. the command line - AdvHD_EasyModern.exe MyGame.exe | -t MyGame.exe | --target MyGame.exe
 //   2. launcher.ini     - [Launcher] Target=MyGame.exe, or a bare filename on line one
-//   3. guesswork        - AdvHD_CN.exe, then AdvHD_CHS.exe, then AdvHD_crack.exe, then AdvHD.exe
+//   3. wildcard        - the first "AdvHD*.exe" next to this launcher
 
 #include <windows.h>
 #include <stdio.h>
@@ -103,30 +103,73 @@ static bool InjectDll(HANDLE hProcess, const char* dllPath, const char* hookName
     return true;
 }
 
-int main(int argc, char** argv) {
-    const char* defaultTargets[] = {
-        "AdvHD_CN.exe",
-        "AdvHD_CHS.exe",
-        "AdvHD_crack.exe",
-        "AdvHD.exe"
-    };
+// ============================================================================
+// Which executable to launch
+//
+// We glob TARGET_PATTERN next to this launcher and take the first hit,
+// skipping this launcher itself. Differently named exe? Edit
+// TARGET_PATTERN and rebuild.
+// ============================================================================
+#define TARGET_PATTERN "AdvHD*.exe"
 
+// Base name of this launcher, for the usage text.
+static const char* SelfName() {
+    static char name[MAX_PATH] = {0};
+    if (name[0] == 0) {
+        char full[MAX_PATH] = {0};
+        GetModuleFileNameA(NULL, full, MAX_PATH);
+        char* base = full;
+        for (char* p = full; *p; ++p) { if (*p == '\\' || *p == '/') base = p + 1; }
+        lstrcpynA(name, base, MAX_PATH);
+    }
+    return name;
+}
+
+// First TARGET_PATTERN match beside us. Never returns ourselves.
+static bool FindWildcardTarget(char* outPath, DWORD cch) {
+    char pattern[MAX_PATH];
+    FullPathNextToSelf(TARGET_PATTERN, pattern, MAX_PATH);
+
+    char selfPath[MAX_PATH] = {0};
+    if (GetModuleFileNameA(NULL, selfPath, MAX_PATH) == 0) selfPath[0] = 0;
+
+    char best[MAX_PATH] = {0};
+    WIN32_FIND_DATAA fd;
+    HANDLE hFind = FindFirstFileA(pattern, &fd);
+    if (hFind != INVALID_HANDLE_VALUE) {
+        do {
+            if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
+            char candidate[MAX_PATH];
+            FullPathNextToSelf(fd.cFileName, candidate, MAX_PATH);
+            if (selfPath[0] && lstrcmpiA(candidate, selfPath) == 0) continue;
+            if (best[0] == 0 || lstrcmpiA(candidate, best) < 0) lstrcpynA(best, candidate, MAX_PATH);
+        } while (FindNextFileA(hFind, &fd));
+        FindClose(hFind);
+    }
+    if (best[0] == 0) return false;
+    lstrcpynA(outPath, best, cch);
+    return true;
+}
+
+int main(int argc, char** argv) {
     const char* cliTarget = NULL;
 
     // Read the command line
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
-            printf("AdvHD Modular Mod Launcher\n\n");
+            printf("AdvHD EasyModern launcher\n\n");
             printf("Usage:\n");
-            printf("  advhd_mod_launcher.exe [target.exe]\n");
-            printf("  advhd_mod_launcher.exe -t <target.exe>\n");
-            printf("  advhd_mod_launcher.exe --target <target.exe>\n\n");
-            printf("Configuration File Override:\n");
-            printf("  Place a 'launcher.ini' in the launcher directory:\n");
-            printf("    [Launcher]\n");
-            printf("    Target=YourCustomGame.exe\n\n");
-            printf("Default auto-detected executables (in order):\n");
-            printf("  AdvHD_CN.exe -> AdvHD_CHS.exe -> AdvHD_crack.exe -> AdvHD.exe\n");
+            printf("  %s [target.exe]\n", SelfName());
+            printf("  %s -t <target.exe>\n", SelfName());
+            printf("  %s --target <target.exe>\n\n", SelfName());
+            printf("Target selection, in order:\n");
+            printf("  1. the command line, above\n");
+            printf("  2. launcher.ini beside this exe:\n");
+            printf("       [Launcher]\n");
+            printf("       Target=YourGame.exe\n");
+            printf("  3. the first '%s' sitting beside this exe\n\n", TARGET_PATTERN);
+            printf("Your game exe is named something else? Edit TARGET_PATTERN in\n");
+            printf("launcher.cpp and rebuild. That is the supported way to add one.\n");
             return 0;
         } else if ((strcmp(argv[i], "-t") == 0 || strcmp(argv[i], "--target") == 0) && i + 1 < argc) {
             cliTarget = argv[++i];
@@ -163,22 +206,21 @@ int main(int argc, char** argv) {
         }
     }
 
-    // Last resort: sniff around for a standard AdvHD exe
+    // Last resort: glob TARGET_PATTERN next to us
     if (exePath[0] == 0) {
-        for (size_t i = 0; i < sizeof(defaultTargets) / sizeof(defaultTargets[0]); i++) {
-            char candidate[MAX_PATH];
-            FullPathNextToSelf(defaultTargets[i], candidate, MAX_PATH);
-            if (CheckFileExists(candidate)) {
-                lstrcpyA(exePath, candidate);
-                printf("[launcher] Auto-detected target executable: %s\n", defaultTargets[i]);
-                break;
-            }
+        if (FindWildcardTarget(exePath, MAX_PATH)) {
+            printf("[launcher] Auto-detected target: %s\n", exePath);
         }
     }
 
     if (exePath[0] == 0 || !CheckFileExists(exePath)) {
-        printf("[launcher] ERROR: No valid AdvHD executable found!\n");
-        printf("Please specify a target via CLI argument, launcher.ini, or place a standard AdvHD exe next to the launcher.\n");
+        printf("[launcher] ERROR: no '%s' found next to this launcher.\n", TARGET_PATTERN);
+        printf("  Point it at your game:  %s <yourgame.exe>\n", SelfName());
+        printf("  Or drop a launcher.ini beside it with:\n");
+        printf("      [Launcher]\n");
+        printf("      Target=yourgame.exe\n");
+        printf("  To change the search pattern itself, edit TARGET_PATTERN in\n");
+        printf("  launcher.cpp and rebuild.\n");
         return 2;
     }
 
