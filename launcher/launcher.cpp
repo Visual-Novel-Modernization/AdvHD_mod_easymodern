@@ -1,11 +1,14 @@
-// Universal Mod Launcher for AdvHD Engine
-// Supports dynamic target executable specification via:
-// 1. CLI arguments: `advhd_mod_launcher.exe [target.exe]` or `-t <target.exe>`
-// 2. Local config: `launcher.ini` ([Launcher] Target=<target.exe>)
-// 3. Auto-detection cascade: AdvHD_CN.exe -> AdvHD_CHS.exe -> AdvHD_crack.exe -> AdvHD.exe
+// AdvHD EasyModern launcher
 //
-// Dynamically probes and injects jxl_hook.dll and av1_hook.dll if present,
-// gracefully falling back to stock behavior if any or all hooks are omitted.
+// Hello, and welcome to the Aperture Science computer-aided enrichment launcher.
+//
+// Starts the game, then quietly slips jxl_hook.dll and av1_hook.dll into it. If either one isn't
+// sitting next to this exe, no drama, we skip it and run the game stock.
+//
+// It has to know which exe to start, and it'll take the answer three ways, in order:
+//   1. the command line - advhd_mod_launcher.exe MyGame.exe | -t MyGame.exe | --target MyGame.exe
+//   2. launcher.ini     - [Launcher] Target=MyGame.exe, or a bare filename on line one
+//   3. guesswork        - AdvHD_CN.exe, then AdvHD_CHS.exe, then AdvHD_crack.exe, then AdvHD.exe
 
 #include <windows.h>
 #include <stdio.h>
@@ -34,7 +37,7 @@ static bool CheckFileExists(const char* path) {
 static bool ReadConfigTarget(const char* iniPath, char* outTarget, DWORD cch) {
     if (!CheckFileExists(iniPath)) return false;
 
-    // 1. INI key format: [Launcher] Target=Game.exe
+    // Proper INI style: [Launcher] Target=Game.exe
     char buf[MAX_PATH] = {0};
     GetPrivateProfileStringA("Launcher", "Target", "", buf, MAX_PATH, iniPath);
     if (buf[0] != 0) {
@@ -42,7 +45,7 @@ static bool ReadConfigTarget(const char* iniPath, char* outTarget, DWORD cch) {
         return true;
     }
 
-    // 2. Plain text format: first line containing a .exe filename
+    // Or somebody just pasted a filename on its own line. We'll take that too.
     FILE* fp = fopen(iniPath, "r");
     if (fp) {
         if (fgets(buf, sizeof(buf), fp)) {
@@ -110,7 +113,7 @@ int main(int argc, char** argv) {
 
     const char* cliTarget = NULL;
 
-    // Parse CLI arguments
+    // Read the command line
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
             printf("AdvHD Modular Mod Launcher\n\n");
@@ -135,7 +138,7 @@ int main(int argc, char** argv) {
     char exePath[MAX_PATH] = {0};
     char workDir[MAX_PATH] = {0};
 
-    // Priority 1: Command line argument
+    // First choice: whatever they typed
     if (cliTarget != NULL) {
         FullPathNextToSelf(cliTarget, exePath, MAX_PATH);
         if (!CheckFileExists(exePath)) {
@@ -145,7 +148,7 @@ int main(int argc, char** argv) {
         printf("[launcher] Target executable selected via CLI argument: %s\n", cliTarget);
     }
 
-    // Priority 2: launcher.ini configuration file
+    // Second choice: launcher.ini, for the double-click crowd
     if (exePath[0] == 0) {
         char iniPath[MAX_PATH];
         char configTarget[MAX_PATH] = {0};
@@ -160,7 +163,7 @@ int main(int argc, char** argv) {
         }
     }
 
-    // Priority 3: Automatic detection cascade
+    // Last resort: sniff around for a standard AdvHD exe
     if (exePath[0] == 0) {
         for (size_t i = 0; i < sizeof(defaultTargets) / sizeof(defaultTargets[0]); i++) {
             char candidate[MAX_PATH];
@@ -190,7 +193,7 @@ int main(int argc, char** argv) {
     printf("[launcher] Target Path : %s\n", exePath);
     printf("[launcher] Work Dir    : %s\n", workDir);
 
-    // Probe hook presence prior to launch
+    // See which hooks we actually have before starting anything
     char jxlDllPath[MAX_PATH];
     char av1DllPath[MAX_PATH];
     FullPathNextToSelf("jxl_hook.dll", jxlDllPath, MAX_PATH);
@@ -220,7 +223,7 @@ int main(int argc, char** argv) {
     }
     printf("[launcher] Engine process spawned (PID: %lu)\n", pi.dwProcessId);
 
-    // Await process initialization / potential unprotect sequence
+    // Give the engine a couple of seconds to unpack itself before we go poking at it
     if (hasJxlHook || hasAv1Hook) {
         Sleep(2000);
     }

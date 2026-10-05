@@ -52,7 +52,7 @@ static void LogMsg(const char* fmt, ...) {
     }
 }
 
-// libjxl dynamic function types and pointers
+// libjxl entry points, grabbed at runtime. No import library, no linker arguments, no worries.
 static HMODULE g_hLibJXL = NULL;
 typedef JxlDecoder* (*pfn_JxlDecoderCreate)(const JxlMemoryManager*);
 typedef void (*pfn_JxlDecoderDestroy)(JxlDecoder*);
@@ -128,7 +128,7 @@ static HRESULT DecodeJXLToTexture(
     uint32_t xsize = 0, ysize = 0;
     uint8_t* pixels = NULL;
     size_t buffer_size = 0;
-    JxlPixelFormat format = {4, JXL_TYPE_UINT8, JXL_NATIVE_ENDIAN, 0}; // RGBA8
+    JxlPixelFormat format = {4, JXL_TYPE_UINT8, JXL_NATIVE_ENDIAN, 0}; // RGBA8 (we flip it to BGRA below, eh)
 
     bool success = false;
     for (;;) {
@@ -158,7 +158,7 @@ static HRESULT DecodeJXLToTexture(
         return E_FAIL;
     }
 
-    // Convert RGBA to BGRA (Direct3D 9 D3DFMT_A8R8G8B8 format in memory)
+    // D3D9 says A8R8G8B8, which little-endian means BGRA in memory. Swap red and blue, carry on.
     for (size_t i = 0; i < (size_t)xsize * ysize; i++) {
         uint8_t r = pixels[i * 4 + 0];
         uint8_t b = pixels[i * 4 + 2];
@@ -166,7 +166,8 @@ static HRESULT DecodeJXLToTexture(
         pixels[i * 4 + 2] = r;
     }
 
-    // 针对 D3D9 贴图创建尝试多种 Pool/Usage 策略
+    // Drivers get picky about which pool/usage pair they'll accept, so try the lot and take the
+    // first one that doesn't complain.
     HRESULT hr = E_FAIL;
     D3DPOOL pools[] = { ReqPool, D3DPOOL_MANAGED, D3DPOOL_DEFAULT, D3DPOOL_SYSTEMMEM };
     DWORD usages[] = { ReqUsage, 0, D3DUSAGE_DYNAMIC };
@@ -209,7 +210,7 @@ static HRESULT DecodeJXLToTexture(
         pSrcInfo->MipLevels = 1;
         pSrcInfo->Format = D3DFMT_A8R8G8B8;
         pSrcInfo->ResourceType = D3DRTYPE_TEXTURE;
-        pSrcInfo->ImageFileFormat = 3; // D3DXIFF_PNG
+        pSrcInfo->ImageFileFormat = 3; // D3DXIFF_PNG. The engine just wants a number here.
     }
 
     free(pixels);

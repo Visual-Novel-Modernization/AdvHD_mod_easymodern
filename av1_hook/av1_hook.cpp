@@ -7,8 +7,10 @@
 
 // ============================================================================
 // AdvHD DirectShow AV1 Registration-Free Decoder Hook
-// Purpose: Enables AdvHD engine to play modern AV1 video files (MP4/MKV)
-//          via in-process LAV Filters without modifying system registry.
+//
+// AdvHD only ever learned to play ASF/WMV. We teach it AV1 and Opus by handing it LAV Filters
+// from the same folder, loaded in-process. No regsvr32, no registry keys, nothing on the machine
+// gets touched.
 // ============================================================================
 
 static void LogMsg(const char* fmt, ...) {
@@ -26,12 +28,12 @@ static void LogMsg(const char* fmt, ...) {
     }
 }
 
-// LAV Filters CLSIDs
+// LAV Filters CLSIDs, straight out of the LAV source. Do not destroy vital testing apparatus.
 static const GUID GUID_LAVSplitterSource = { 0xB98D13E7, 0x55DB, 0x4385, { 0xA3, 0x3D, 0x09, 0xFD, 0x1B, 0xA2, 0x63, 0x38 } };
 static const GUID GUID_LAVVideo          = { 0xEE30215D, 0x164F, 0x4A92, { 0xA4, 0xEB, 0x9D, 0x4C, 0x13, 0x39, 0x0F, 0x9F } };
 static const GUID GUID_LAVAudio          = { 0xE8E73B6B, 0x4CB3, 0x44A4, { 0xBE, 0x99, 0x4F, 0x7B, 0xCB, 0x96, 0xE4, 0x91 } };
 
-// DirectShow / COM function signatures
+// DirectShow and COM signatures we call through, because linking strmiids would be too easy
 typedef HRESULT (WINAPI *PFN_CoCreateInstance)(REFCLSID rclsid, LPUNKNOWN pUnkOuter, DWORD dwClsContext, REFIID riid, LPVOID *ppv);
 typedef HRESULT (WINAPI *PFN_AddSourceFilter)(IGraphBuilder* pThis, LPCWSTR lpcwstrFileName, LPCWSTR lpcwstrFilterName, IBaseFilter** ppFilter);
 typedef HRESULT (WINAPI *PFN_RenderFile)(IGraphBuilder* pThis, LPCWSTR lpcwstrFile, LPCWSTR lpcwstrPlayList);
@@ -44,31 +46,31 @@ static PFN_RenderFile        g_pfnRealRenderFile        = NULL;
 static PFN_FindPin           g_pfnRealFindPin           = NULL;
 static HMODULE               g_hSelfModule              = NULL;
 
-// Resolve LAV Filter path (supports both ./lav/ and ./)
+// Where did the user put LAV? Three guesses, in order.
 static void GetLAVPath(const wchar_t* axName, wchar_t* outPath, DWORD maxLen) {
     wchar_t selfDir[MAX_PATH] = {0};
     GetModuleFileNameW(g_hSelfModule, selfDir, MAX_PATH);
     wchar_t* pSlash = wcsrchr(selfDir, L'\\');
     if (pSlash) *(pSlash + 1) = L'\0';
 
-    // 1. Try <selfDir>\lav\<axName>
+    // 1. ./lav/ - the tidy way
     lstrcpyW(outPath, selfDir);
     lstrcatW(outPath, L"lav\\");
     lstrcatW(outPath, axName);
     if (GetFileAttributesW(outPath) != INVALID_FILE_ATTRIBUTES) return;
 
-    // 2. Try <selfDir>\<axName>
+    // 2. ./ - the "I dumped everything into the game folder" way
     lstrcpyW(outPath, selfDir);
     lstrcatW(outPath, axName);
     if (GetFileAttributesW(outPath) != INVALID_FILE_ATTRIBUTES) return;
 
-    // 3. Fallback: <selfDir>\tools\lav_x86\<axName>
+    // 3. ./tools/lav_x86/ - the old layout, kept so nothing breaks
     lstrcpyW(outPath, selfDir);
     lstrcatW(outPath, L"tools\\lav_x86\\");
     lstrcatW(outPath, axName);
 }
 
-// In-process COM instantiation from .ax DLL
+// Load the .ax and ask it for a class object. Registration-free COM, no regsvr32, no admin prompt.
 static IBaseFilter* LoadFilterFromAx(const wchar_t* axName, const GUID& clsid) {
     wchar_t axPath[MAX_PATH] = {0};
     GetLAVPath(axName, axPath, MAX_PATH);
@@ -76,7 +78,7 @@ static IBaseFilter* LoadFilterFromAx(const wchar_t* axName, const GUID& clsid) {
     char szNarrowPath[MAX_PATH] = {0};
     WideCharToMultiByte(CP_ACP, 0, axPath, -1, szNarrowPath, MAX_PATH, NULL, NULL);
 
-    // Ensure the directory containing the .ax is in the DLL search path
+    // LAV's own DLLs sit beside the .ax, so point the loader at that folder first
     wchar_t dirPath[MAX_PATH] = {0};
     lstrcpyW(dirPath, axPath);
     wchar_t* pSlash = wcsrchr(dirPath, L'\\');
@@ -112,7 +114,7 @@ static IBaseFilter* LoadFilterFromAx(const wchar_t* axName, const GUID& clsid) {
     return pFilter;
 }
 
-// Check magic header to identify if file is original ASF/WMV
+// Original files start with the ASF GUID. Spot it and we keep our hands off.
 static bool IsAsfFile(const wchar_t* path) {
     HANDLE hFile = CreateFileW(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
     if (hFile == INVALID_HANDLE_VALUE) return false;
@@ -125,7 +127,7 @@ static bool IsAsfFile(const wchar_t* path) {
     return (memcmp(buf, asfGuid, 16) == 0);
 }
 
-// Intercept FindPin("Output") on LAV Splitter to route to Video Pin
+// AdvHD asks for a pin named "Output". LAV hasn't got one, so we answer on its behalf.
 static HRESULT WINAPI Hook_FindPin(IBaseFilter* pThis, LPCWSTR Id, IPin** ppPin) {
     if (Id && wcscmp(Id, L"Output") == 0) {
         IEnumPins* pEnum = NULL;
@@ -150,13 +152,13 @@ static HRESULT WINAPI Hook_FindPin(IBaseFilter* pThis, LPCWSTR Id, IPin** ppPin)
     return E_FAIL;
 }
 
-// Intercept IGraphBuilder::AddSourceFilter
+// Every file the engine opens lands here. ASF goes to Windows, everything else gets LAV.
 static HRESULT WINAPI Hook_AddSourceFilter(IGraphBuilder* pThis, LPCWSTR lpcwstrFileName, LPCWSTR lpcwstrFilterName, IBaseFilter** ppFilter) {
     char szNarrowFile[MAX_PATH] = {0};
     if (lpcwstrFileName) WideCharToMultiByte(CP_ACP, 0, lpcwstrFileName, -1, szNarrowFile, MAX_PATH, NULL, NULL);
     LogMsg("[AV1_HOOK] IGraphBuilder::AddSourceFilter called for: %s\n", szNarrowFile);
 
-    // If file is original ASF/WMV, pass through to native Windows DirectShow
+    // Old WMV/ASF? Not our problem, eh. Straight through to the Windows reader.
     if (IsAsfFile(lpcwstrFileName)) {
         LogMsg("[AV1_HOOK] File is original ASF/WMV, passing to native GraphBuilder.\n");
         return g_pfnRealAddSourceFilter(pThis, lpcwstrFileName, lpcwstrFilterName, ppFilter);
@@ -186,8 +188,9 @@ static HRESULT WINAPI Hook_AddSourceFilter(IGraphBuilder* pThis, LPCWSTR lpcwstr
     pThis->AddFilter(pVideoDec, L"LAV Video Decoder");
     pThis->AddFilter(pAudioDec, L"LAV Audio Decoder");
 
-    // Automatically pre-render the Audio Pin so audio pipeline is fully connected
-    // (AdvHD only calls Render() on the returned video pin, neglecting audio unless pre-connected)
+    // AdvHD renders the video pin and then walks away, leaving audio dangling. So we wire the
+    // audio pin up ourselves before handing the splitter back. Otherwise you get a lovely silent
+    // movie, and nobody asked for that.
     IEnumPins* pEnumPins = NULL;
     if (SUCCEEDED(pSplitter->EnumPins(&pEnumPins))) {
         IPin* pPin = NULL;
@@ -204,7 +207,7 @@ static HRESULT WINAPI Hook_AddSourceFilter(IGraphBuilder* pThis, LPCWSTR lpcwstr
         pEnumPins->Release();
     }
 
-    // Hook FindPin on this splitter instance
+    // Vtable patch on this one splitter instance. FindPin is slot 11. Yes, we counted.
     void** pSplitterVTable = *(void***)pSplitter;
     if (pSplitterVTable[11] != (void*)Hook_FindPin) {
         g_pfnRealFindPin = (PFN_FindPin)pSplitterVTable[11];
@@ -220,7 +223,7 @@ static HRESULT WINAPI Hook_AddSourceFilter(IGraphBuilder* pThis, LPCWSTR lpcwstr
     return S_OK;
 }
 
-// Intercept IGraphBuilder::RenderFile
+// RenderFile is the fallback AdvHD takes when its FindPin lookup fails. We cover that too.
 static HRESULT WINAPI Hook_RenderFile(IGraphBuilder* pThis, LPCWSTR lpcwstrFile, LPCWSTR lpcwstrPlayList) {
     LogMsg("[AV1_HOOK] IGraphBuilder::RenderFile called for: %ls\n", lpcwstrFile);
     if (IsAsfFile(lpcwstrFile)) {
@@ -233,7 +236,7 @@ static HRESULT WINAPI Hook_RenderFile(IGraphBuilder* pThis, LPCWSTR lpcwstrFile,
         return g_pfnRealRenderFile(pThis, lpcwstrFile, lpcwstrPlayList);
     }
 
-    // Render all output pins
+    // Connect whatever the graph hasn't connected yet
     IEnumPins* pEnum = NULL;
     pSource->EnumPins(&pEnum);
     IPin* pPin = NULL;
@@ -311,7 +314,7 @@ static void InstallDShowAV1Hook() {
 }
 
 // ============================================================================
-// DllMain Entry
+// DllMain. Boring on purpose: attach, install the hook, get out of the way.
 // ============================================================================
 
 extern "C" {

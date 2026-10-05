@@ -1,28 +1,33 @@
 # Legal Disclaimer & Compliance Notice
 
-**Project:** AdvHD Modernization Suite — Decoupled JXL & AV1 Plugins
+**Project:** AdvHD EasyModern
+**Repository:** `advhd-easymodern`
 **Origin of publication:** Canada
-**Applies to:** all users, with specific guidance for users located in **mainland China**
+**Intended for:** users outside China. Use in China is allowed, at your own risk.
 **Language of record:** English (this version is authoritative)
 
 ---
 
-> **This document is not legal advice.** It is a good-faith disclosure of the legal basis on which
-> this project is published and of the obligations that fall on you as a user. No lawyer–client or
+> **This document is not legal advice.** It is a good-faith disclosure of the basis on which this
+> project is published and of the expectations placed on you as a user. No lawyer–client or
 > solicitor–client relationship is created by reading it or by using this project. Laws differ by
-> country and change over time. If your situation is unclear, consult a qualified lawyer in your
-> own jurisdiction **before** you download, build, or run anything here.
+> country and change over time. If your situation is unclear, consult a qualified lawyer in your own
+> jurisdiction **before** you download, build, or run anything here.
 
 ---
 
-## 1. Compliance with Canadian law
+## 1. Who made this, and under what law
 
-This project is developed, maintained, and published **from Canada**, and it is published on the
-basis that it complies with applicable Canadian law, including the *Copyright Act*, R.S.C., 1985,
-c. C-42. In particular:
+This project is contributed to by people in **multiple countries and regions**. Each contributor
+contributes on the basis that their own contribution complies with the laws and policies applicable
+where they are.
+
+The project is **developed, maintained, and published from Canada**, and it is published on the basis
+that it complies with applicable Canadian law, including the *Copyright Act*, R.S.C., 1985, c. C-42.
+In particular:
 
 * **Interoperability.** Canadian law provides that it is not an infringement of copyright in a
-  computer program for a person who owns an authorized copy of that program — or holds a licence to
+  computer program for a person who owns an authorized copy of that program — or holds a license to
   use a copy — to reproduce the copy for the sole purpose of obtaining the information needed to
   make that program and another program interoperable, subject to limits on how that information may
   be used or disclosed (*Copyright Act*, [s. 30.61](https://laws-lois.justice.gc.ca/eng/acts/C-42/section-30.61.html),
@@ -34,43 +39,29 @@ c. C-42. In particular:
   *Copyright Act* [s. 41](https://laws-lois.justice.gc.ca/eng/acts/C-42/section-41.html). It ships no
   cracked, pre-patched, or key-generating material, and it is not intended to enable access to any
   work that you are not already entitled to access.
-* **No redistribution of protected works.** No third-party creative work is redistributed here
-  (see §3 and §5).
 
 The summaries above are abbreviated and are provided for transparency. They are not a substitute for
 the statute, and they are not a legal opinion about your particular use.
 
 ---
 
-## 2. Notice to users in mainland China
+## 2. Use in China
 
-This project is offered from Canada under Canadian law. **Regardless of where the project is
-published, your use of it happens where you are**, and you are solely responsible for complying
-with the laws that apply to you.
+This project is written and published for use outside China. It is not written for Chinese law, and
+no representation is made that it complies with it.
 
-If you are located in **mainland China**, please note the following.
+Nothing here stops you using it in China.
 
-1. **A different legal regime applies to you.** Your use is governed principally by the laws of the
-   People's Republic of China, which are not the same as Canadian law. Relevant instruments include,
-   among others, the **Copyright Law of the People's Republic of China**, the **Regulations on
-   Computer Software Protection**, the **Civil Code of the People's Republic of China**, and
-   applicable judicial interpretations.
-2. **Do not assume Canadian permissions travel with you.** The interoperability exception described
-   in §1 is a feature of *Canadian* law. The laws of the PRC do not necessarily contain an
-   equivalent exception, and acts that are lawful in Canada may be unlawful — civilly or criminally —
-   in mainland China. Nothing in this repository should be read as a representation that any
-   particular act is permitted under PRC law.
-3. **Own a lawful copy.** Use this project only with a game copy that you have lawfully acquired and
-   are licensed to use. Do not use it with pirated, cracked, or otherwise unauthorized copies.
-4. **Do not distribute protected content.** Do not use this project to extract, repackage, upload,
-   or distribute game assets, artwork, audio, video, scripts, or executables belonging to any rights
-   holder. Converting a file for your own private use is not a licence to publish it.
-5. **Network access is your responsibility.** Obtaining the optional third-party components listed
-   in §5 requires access to external services (for example GitHub and vendor download sites). You
-   are responsible for complying with any network, telecommunications, and content rules that apply
-   to you.
-6. **Obtain local advice.** If you intend to use, modify, or redistribute this project in mainland
-   China — particularly for any commercial or public purpose — consult qualified PRC counsel first.
+* If you use it in China, including to play visual novels or galgame, that is your own call and your
+  own risk. The project and its contributors accept no responsibility or liability for any
+  consequence, whether under Chinese law or any other.
+* We do not monitor or verify such use, and we do not support, endorse or assist it.
+* Anyone who uses this project in China is responsible for their own compliance with Chinese law. The
+  Canadian permissions described in §1 do not apply there.
+* We do ask that you do not repost, mirror or redistribute this project, its builds or derived
+  material into China. See §7 for why that is a request rather than a license term.
+* If this project conflicts with the laws, religion or customs where you are, stop using it and
+  remove it.
 
 ---
 
@@ -81,13 +72,11 @@ contributors**. It does **not** contain, bundle, mirror, or distribute:
 
 * any game executable, patch, or crack;
 * any game asset — artwork, sprites, backgrounds, audio, video, scripts, or archives;
-* any encryption or decryption keys;
-* any third-party binary library.
+* any encryption or decryption keys.
 
 This project is **not affiliated with, authorized by, endorsed by, or sponsored by** WillPlus,
 RioShiina, or any other developer, publisher, or rights holder of any AdvHD Engine title. All game
-titles and their assets remain the property of their respective rights holders. You must obtain your
-own lawful copy of any game you use this project with.
+titles and their assets remain the property of their respective rights holders.
 
 ---
 
@@ -96,26 +85,74 @@ own lawful copy of any game you use this project with.
 This project is intended for:
 
 * **Personal interoperability and format modernization** — enabling a game you lawfully own to play
-  modern AV1/Opus video and JPEG XL textures, and to reduce storage footprint, on your own hardware.
-* **Security and preservation research**, study, and teaching.
+  modern AV1/Opus video and JPEG XL textures, and to reduce storage footprint, on your own hardware;
+* **Security and preservation research**, study, and teaching;
 * **Interoperability study** consistent with the exception described in §1.
 
 It is **not** intended for, and you must not use it for:
 
-* circumventing copy protection, licence checks, or digital rights management;
+* circumventing copy protection, license checks, or digital rights management;
 * distributing, selling, or publicly performing game content you do not own or license;
 * creating or distributing pirated copies of any software;
 * any unlawful, deceptive, or infringing purpose.
 
 ---
 
-## 5. Third-party components (obtained separately, not distributed here)
+## 5. You must own the base game
+
+This project is **not a game** and contains no game. It cannot run on its own. It is a set of codec
+hooks and a launcher that must be placed alongside a **lawfully installed copy of the base game**,
+which you must obtain and license yourself. Use it only with a copy you have lawfully acquired. Do
+not use it with pirated, cracked, or otherwise unauthorized copies.
+
+---
+
+## 6. Free of charge — beware of impostors
+
+This project is, and will remain, **completely free**. The contributors have never charged for it and
+have never organized or participated in any paid activity in connection with it.
+
+* **Nobody is authorized to charge you money for this project**, in any form, on any platform.
+* Any website, storefront, group, channel, or individual using the `advhd-easymodern` / AdvHD
+  EasyModern name to sell access, solicit donations in exchange for the software, or gate it behind a
+  paywall is **unaffiliated with this project and is likely fraudulent**.
+* If you paid someone for this project, you were defrauded. **We received nothing, we owe you
+  nothing, and we accept no responsibility** for that transaction.
+
+---
+
+## 7. Modification, redistribution, and commercial use
+
+The **source code in this repository is licensed under the MIT License** (see [`LICENSE`](LICENSE)).
+Under that license you may use, copy, modify, merge, publish, distribute, sublicense, and sell the
+software, provided the copyright notice and permission notice are retained.
+
+Alongside that license, the contributors **ask** the following of the community, and state it as
+their intent:
+
+* **Do not sell this project, and do not charge for it in any form.** See §6.
+* **Do not present modified or repackaged builds as official releases**, and do not use the project
+  name or contributor names to imply endorsement of a modified build.
+
+> **An honest note on this section.** The MIT License permits modification, commercial use and
+> redistribution. Those are permissions the contributors have already granted and, for the code you
+> received, cannot retroactively withdraw. The requests in this document therefore express the
+> contributors' intent rather than an enforceable restriction on the MIT-licensed code. Where a
+> request conflicts with the MIT License, **the MIT License governs the code**.
+
+In every case, the contributors accept **no responsibility** for any modified, repackaged, or
+redistributed version they did not publish, and no responsibility for any use made of this project in
+China.
+
+---
+
+## 8. Third-party components (obtained separately, not distributed here)
 
 This project **dynamically loads** the following at runtime and does **not** bundle, link, or
-redistribute them. Each remains governed exclusively by its own licence, and **you** are responsible
-for reviewing and complying with that licence before obtaining or using it:
+redistribute them. Each remains governed exclusively by its own license, and **you** are responsible
+for reviewing and complying with that license before obtaining or using it:
 
-| Component | Purpose | Typical licence |
+| Component | Purpose | Typical license |
 | :--- | :--- | :--- |
 | **LAV Filters** (`LAVSplitter.ax`, `LAVVideo.ax`, `LAVAudio.ax` and dependencies) | Registration-free DirectShow decoding for AV1/Opus | GPL-2.0-or-later |
 | **libjxl** (`libjxl.dll`, `libjxl_cms.dll` and dependencies) | JPEG XL texture decoding | BSD-3-Clause |
@@ -130,7 +167,7 @@ notice-availability requirements. Distributing them is your decision and your re
 
 ---
 
-## 6. Modifying your game installation is at your own risk
+## 9. Modifying your game installation is at your own risk
 
 This software injects code into a running process and rewrites asset containers. Such operations can
 corrupt files, break saved games, destabilize the host application, trigger anti-tamper or
@@ -140,7 +177,7 @@ to, or where it would disrupt a multiplayer or online service.
 
 ---
 
-## 7. No warranty; limitation of liability
+## 10. No warranty; limitation of liability
 
 This project is licensed under the **MIT License** (see [`LICENSE`](LICENSE)). It is provided
 **"AS IS"**, without warranty of any kind, express or implied, including but not limited to the
@@ -154,7 +191,7 @@ of any consequence to your game installation, your data, your hardware, or your 
 
 ---
 
-## 8. Trademarks
+## 11. Trademarks
 
 All product names, game titles, company names, logos, and trademarks referenced in this repository
 are the property of their respective owners and are used for identification and descriptive purposes
@@ -162,7 +199,7 @@ only. Their use does not imply any affiliation with or endorsement by the tradem
 
 ---
 
-## 9. Rights holders: contact and takedown
+## 12. Rights holders: contact and takedown
 
 If you are a rights holder and you believe this repository infringes your rights, please open an
 issue on this repository (or contact the maintainer through the repository's published contact
