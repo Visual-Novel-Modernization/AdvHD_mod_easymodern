@@ -1,7 +1,7 @@
 # Legal Disclaimer & Compliance Notice
 
 **Project:** AdvHD EasyModern
-**Repository:** `advhd-easymodern`
+**Repository:** `AdvHD_mod_easymodern`
 **Origin of publication:** Canada
 **Intended for:** users outside China. Use in China is allowed, at your own risk.
 **Language of record:** English (this version is authoritative)
@@ -113,7 +113,7 @@ This project is, and will remain, **completely free**. The contributors have nev
 have never organized or participated in any paid activity in connection with it.
 
 * **Nobody is authorized to charge you money for this project**, in any form, on any platform.
-* Any website, storefront, group, channel, or individual using the `advhd-easymodern` / AdvHD
+* Any website, storefront, group, channel, or individual using the `AdvHD_mod_easymodern` / AdvHD
   EasyModern name to sell access, solicit donations in exchange for the software, or gate it behind a
   paywall is **unaffiliated with this project and is likely fraudulent**.
 * If you paid someone for this project, you were defrauded. **We received nothing, we owe you

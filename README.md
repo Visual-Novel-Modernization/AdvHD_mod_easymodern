@@ -1,6 +1,6 @@
 # AdvHD EasyModern
 
-Repository: `advhd-easymodern`
+Repository: `AdvHD_mod_easymodern`
 
 Runtime hooks and a transcoding pipeline for WillPlus / RioShiina AdvHD Engine titles. They let an
 older engine stream JPEG XL textures and decode AV1 / Opus video. Nothing is written to the registry
@@ -312,7 +312,7 @@ byte, trailer included.
 
 Once prerequisites are configured and available in `PATH`, run `scripts\build_all.bat` from the repository root:
 ```cmd
-cd advhd-easymodern
+cd AdvHD_mod_easymodern
 call scripts\build_all.bat
 ```
 
