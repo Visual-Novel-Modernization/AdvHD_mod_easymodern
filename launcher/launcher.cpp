@@ -6,7 +6,7 @@
 // sitting next to this exe, no drama, we skip it and run the game stock.
 //
 // It has to know which exe to start, and it'll take the answer three ways, in order:
-//   1. the command line - advhd_mod_launcher.exe MyGame.exe | -t MyGame.exe | --target MyGame.exe
+//   1. the command line - game_launcher.exe MyGame.exe | -t MyGame.exe | --target MyGame.exe
 //   2. launcher.ini     - [Launcher] Target=MyGame.exe, or a bare filename on line one
 //   3. guesswork        - AdvHD_CN.exe, then AdvHD_CHS.exe, then AdvHD_crack.exe, then AdvHD.exe
 
