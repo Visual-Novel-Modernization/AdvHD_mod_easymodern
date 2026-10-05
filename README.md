@@ -385,6 +385,14 @@ Outputs:
    If your game executable is named something else, change `TARGET_PATTERN` near the top of
    `launcher/launcher.cpp` and rebuild, or add an `AdvHD_EasyModern.ini` pinning the target.
 
+### Packed (protected) executables
+
+Not a blocker: the hooks patch the function body in `d3dx9_43.dll` / `ole32.dll`, not an import
+table, so it does not matter when the protector decrypts the engine. Only the injection delay
+matters — an Enigma exe (`.enigma1` / `.enigma2`) wants ~`2500` ms, a plain one ~`1200` (default is
+`2000`). Set `--delay 2500` or `[Launcher] Delay=2500`. If a release ships both a packed and a plain
+exe, use the plain one — it is what the game's own `launcher.INI` usually names in `GAMEEXE`.
+
 ### Hook Discovery and Fallback
 * Probes for `jxl_hook.dll` and `av1_hook.dll` in its directory before injecting.
 * If either hook DLL is missing, the launcher logs it and continues without error, so texture modding alone, video modding alone, or the stock engine all work.

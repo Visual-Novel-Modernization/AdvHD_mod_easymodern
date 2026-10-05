@@ -10,19 +10,21 @@
 //   2. AdvHD_EasyModern.ini - [Launcher] Target=MyGame.exe, or a bare filename on line one
 //   3. wildcard        - the first "AdvHD*.exe" next to this launcher
 //
-// NOTE on the config file name: it used to be launcher.ini. That name is a landmine on
-// WillPlus titles, which ship their own UTF-16LE launcher.INI (read by the game's own
-// launcher.exe to find GAMEEXE, MAINIMAGE, the manual, and so on). Windows is
-// case-insensitive, so a mod config called launcher.ini does not sit next to the game's
-// file - it IS the game's file, and a deployment that writes one silently destroys the
-// game's launcher configuration. CONFIG_NAME therefore avoids that name entirely.
-// LEGACY_CONFIG_NAME is still read for compatibility; the reader rejects the game's own
-// launcher.INI on its own, since its first line is "[LAUNCHER]" and not a *.exe.
+// NOTE: do NOT name the config launcher.ini. WillPlus ships its own launcher.INI and Windows is
+// case-insensitive, so that would overwrite the game's file. The legacy name is still read, but
+// rejected when it looks like the game's own (first line "[LAUNCHER]", not a *.exe).
 
 #include <windows.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stdlib.h>
+
+// Wait before injecting, ms. --delay / [Launcher] Delay. A packed exe (Enigma) needs longer than a
+// plain one, ~2500 vs ~1200, because the protector decrypts first. The hook itself does not care
+// when the code appears - it trampolines the function body in d3dx9_43.dll, not an import table.
+#define DEFAULT_INJECT_DELAY_MS 2000
+#define MAX_INJECT_DELAY_MS     60000
 
 static void FullPathNextToSelf(const char* leaf, char* out, DWORD cch) {
     char self[MAX_PATH];
@@ -112,6 +114,22 @@ static bool InjectDll(HANDLE hProcess, const char* dllPath, const char* hookName
     return true;
 }
 
+// Delay override from CONFIG_NAME only - a game-owned launcher.INI must not affect us.
+static DWORD ReadConfigDelay(const char* iniPath, DWORD fallback) {
+    if (!CheckFileExists(iniPath)) return fallback;
+
+    char buf[32] = {0};
+    GetPrivateProfileStringA("Launcher", "Delay", "", buf, sizeof(buf), iniPath);
+    if (buf[0] == 0) return fallback;
+
+    char* end = NULL;
+    long v = strtol(buf, &end, 10);
+    if (end == buf) return fallback;
+    if (v < 0) v = 0;
+    if (v > MAX_INJECT_DELAY_MS) v = MAX_INJECT_DELAY_MS;
+    return (DWORD)v;
+}
+
 // ============================================================================
 // Which executable to launch
 //
@@ -121,8 +139,7 @@ static bool InjectDll(HANDLE hProcess, const char* dllPath, const char* hookName
 // ============================================================================
 #define TARGET_PATTERN "AdvHD*.exe"
 
-// Optional config file, parsed by ReadConfigTarget().
-// CONFIG_NAME must NOT be "launcher.ini" - see the note at the top of this file.
+// Optional config file. Must not be "launcher.ini" - see the note at the top.
 #define CONFIG_NAME        "AdvHD_EasyModern.ini"
 #define LEGACY_CONFIG_NAME "launcher.ini"
 
@@ -167,6 +184,7 @@ static bool FindWildcardTarget(char* outPath, DWORD cch) {
 
 int main(int argc, char** argv) {
     const char* cliTarget = NULL;
+    DWORD cliDelay = 0;              // 0 = not given on the command line
 
     // Read the command line
     for (int i = 1; i < argc; i++) {
@@ -175,19 +193,31 @@ int main(int argc, char** argv) {
             printf("Usage:\n");
             printf("  %s [target.exe]\n", SelfName());
             printf("  %s -t <target.exe>\n", SelfName());
-            printf("  %s --target <target.exe>\n\n", SelfName());
+            printf("  %s --target <target.exe>\n", SelfName());
+            printf("  %s [--delay <ms>]\n\n", SelfName());
             printf("Target selection, in order:\n");
             printf("  1. the command line, above\n");
             printf("  2. %s beside this exe:\n", CONFIG_NAME);
             printf("       [Launcher]\n");
             printf("       Target=YourGame.exe\n");
+            printf("       Delay=2500\n");
             printf("  3. the first '%s' sitting beside this exe\n\n", TARGET_PATTERN);
             printf("Your game exe is named something else? Either write a %s,\n", CONFIG_NAME);
             printf("or edit TARGET_PATTERN in launcher.cpp and rebuild. That is the\n");
-            printf("supported way to add one.\n");
+            printf("supported way to add one.\n\n");
+            printf("--delay is how long to wait before injecting, default %d ms.\n", DEFAULT_INJECT_DELAY_MS);
+            printf("Raise it for a packed exe (Enigma): the protector needs time to\n");
+            printf("decrypt itself before it is worth poking at the process.\n");
             return 0;
         } else if ((strcmp(argv[i], "-t") == 0 || strcmp(argv[i], "--target") == 0) && i + 1 < argc) {
             cliTarget = argv[++i];
+        } else if (strcmp(argv[i], "--delay") == 0 && i + 1 < argc) {
+            char* end = NULL;
+            long v = strtol(argv[++i], &end, 10);
+            if (end != argv[i] && v >= 0) {
+                if (v > MAX_INJECT_DELAY_MS) v = MAX_INJECT_DELAY_MS;
+                cliDelay = (DWORD)v;
+            }
         } else if (argv[i][0] != '-') {
             cliTarget = argv[i];
         }
@@ -206,8 +236,7 @@ int main(int argc, char** argv) {
         printf("[launcher] Target executable selected via CLI argument: %s\n", cliTarget);
     }
 
-    // Second choice: the config file, for the double-click crowd.
-    // Checked in order: CONFIG_NAME, then the legacy launcher.ini.
+    // Second choice: CONFIG_NAME, then the legacy name, for the double-click crowd.
     if (exePath[0] == 0) {
         char iniPath[MAX_PATH];
         char configTarget[MAX_PATH] = {0};
@@ -217,8 +246,7 @@ int main(int argc, char** argv) {
         if (ReadConfigTarget(iniPath, configTarget, MAX_PATH)) {
             usedConfig = CONFIG_NAME;
         } else {
-            // Legacy name. ReadConfigTarget only accepts this when it actually looks like a
-            // mod config, so the game's own launcher.INI (first line "[LAUNCHER]") is ignored.
+            // Rejected by ReadConfigTarget when it is the game's own file.
             FullPathNextToSelf(LEGACY_CONFIG_NAME, iniPath, MAX_PATH);
             if (ReadConfigTarget(iniPath, configTarget, MAX_PATH)) {
                 usedConfig = LEGACY_CONFIG_NAME;
@@ -258,11 +286,23 @@ int main(int argc, char** argv) {
     for (char* p = workDir; *p; ++p) { if (*p == '\\' || *p == '/') slash = p; }
     *slash = 0;
 
+    // Injection delay: CLI wins, then CONFIG_NAME, then the built-in default.
+    DWORD injectDelay = DEFAULT_INJECT_DELAY_MS;
+    if (cliDelay > 0) {
+        injectDelay = cliDelay;
+    } else {
+        char delayIniPath[MAX_PATH];
+        FullPathNextToSelf(CONFIG_NAME, delayIniPath, MAX_PATH);
+        injectDelay = ReadConfigDelay(delayIniPath, DEFAULT_INJECT_DELAY_MS);
+    }
+
     printf("====================================================\n");
     printf("   AdvHD Modular Mod Launcher (JXL / AV1 Engine)\n");
     printf("====================================================\n");
     printf("[launcher] Target Path : %s\n", exePath);
     printf("[launcher] Work Dir    : %s\n", workDir);
+    printf("[launcher] Inject after: %lu ms%s\n", injectDelay,
+           (injectDelay != DEFAULT_INJECT_DELAY_MS) ? "  (overridden)" : "");
 
     // See which hooks we actually have before starting anything
     char jxlDllPath[MAX_PATH];
@@ -294,9 +334,9 @@ int main(int argc, char** argv) {
     }
     printf("[launcher] Engine process spawned (PID: %lu)\n", pi.dwProcessId);
 
-    // Give the engine a couple of seconds to unpack itself before we go poking at it
+    // Let a packed exe's protector finish decrypting before we poke the process.
     if (hasJxlHook || hasAv1Hook) {
-        Sleep(2000);
+        Sleep(injectDelay);
     }
 
     int injectedCount = 0;
