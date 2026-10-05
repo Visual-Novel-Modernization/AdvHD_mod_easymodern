@@ -42,15 +42,20 @@ function Read-AdvhdArcIndex {
         $dataStart = 8 + $manifestSize
         $last = $entries | Sort-Object Offset | Select-Object -Last 1
         $dataEnd = $dataStart + $last.Offset + $last.Length
+        # -LiteralPath everywhere: game folders routinely carry '[' / ']' in their
+        # names (e.g. "[250725] [Valve] ..."), which PowerShell's path cmdlets
+        # treat as a wildcard character class.
+        $fullPath = (Get-Item -LiteralPath $ArcPath).FullName
+        $totalSize = (Get-Item -LiteralPath $ArcPath).Length
         $idx = [pscustomobject]@{
-            ArcPath      = (Resolve-Path $ArcPath).Path
+            ArcPath      = $fullPath
             FileCount    = $count
             ManifestSize = $manifestSize
             Manifest     = $rawManifest
             DataStart    = $dataStart
             DataEnd      = $dataEnd
-            Trailer      = (Get-Item $ArcPath).Length - $dataEnd
-            TotalSize    = (Get-Item $ArcPath).Length
+            Trailer      = $totalSize - $dataEnd
+            TotalSize    = $totalSize
             Entries      = $entries
             Br           = $br
             Fs           = $fs
@@ -135,7 +140,7 @@ function Expand-AdvhdArc {
     return [pscustomobject]@{
         Arc      = (Split-Path $ArcPath -Leaf)
         Entries  = $written
-        OutputDir = (Resolve-Path $OutputDir).Path
+        OutputDir = (Resolve-Path -LiteralPath $OutputDir).Path
     }
 }
 

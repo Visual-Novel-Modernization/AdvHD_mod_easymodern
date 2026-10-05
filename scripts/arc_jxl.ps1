@@ -84,7 +84,15 @@ $CjxlPath = (Resolve-Path -LiteralPath $CjxlPath).Path
 
 $files = @()
 foreach ($pattern in $ArcPath) {
-    $resolved = Get-ChildItem -Path $pattern -File -ErrorAction SilentlyContinue
+    # A path that literally exists is taken as-is, because release folders are routinely
+    # named things like "[1818] [fps] ..." and -Path would read those brackets as a
+    # wildcard character class and match nothing. Only a path that does NOT exist as a
+    # literal file is treated as a wildcard pattern.
+    if (Test-Path -LiteralPath $pattern -PathType Leaf) {
+        $resolved = Get-Item -LiteralPath $pattern
+    } else {
+        $resolved = Get-ChildItem -Path $pattern -File -ErrorAction SilentlyContinue
+    }
     if (-not $resolved) { Write-Warning "No files matched: $pattern"; continue }
     $files += $resolved
 }

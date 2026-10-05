@@ -229,12 +229,39 @@ If utilizing `jxl_hook.dll` for texture streaming, the 32-bit shared runtime lib
    ```bash
    pacman -S --noconfirm mingw-w64-i686-libjxl
    ```
-2. Copy the resulting runtime DLLs from `C:\msys64\mingw32\bin\` into the game root:
-   * `libjxl.dll`
-   * `libjxl_cms.dll`
-   * `libbrotlicommon.dll`
-   * `libbrotlidec.dll`
-   * `libhwy.dll`
+2. Copy the resulting runtime DLLs from `C:\msys64\mingw32\bin\` into the game root.
+
+All **ten** files below are required. `jxl_hook.dll` itself only links `KERNEL32.dll` and
+`msvcrt.dll`, but `libjxl.dll` statically imports the rest of this closure, so a missing member
+anywhere in it makes `LoadLibraryA("libjxl.dll")` fail with `err=126` — and the failure is silent
+from the game's point of view: the hook still logs `Hook installed`, but not one texture decodes.
+
+| DLL | Imported by | Notes |
+| :--- | :--- | :--- |
+| `libjxl.dll` | `jxl_hook.dll` (runtime) | codec proper |
+| `libjxl_cms.dll` | `libjxl.dll` | colour management |
+| `libhwy.dll` | `libjxl.dll`, `libjxl_cms.dll` | SIMD helpers |
+| `libbrotlidec.dll` | `libjxl.dll` | Brotli decoder |
+| `libbrotlienc.dll` | `libjxl.dll` | Brotli encoder |
+| `libbrotlicommon.dll` | brotli dec/enc | shared Brotli |
+| `liblcms2-2.dll` | `libjxl_cms.dll` | **easy to miss** |
+| `libgcc_s_dw2-1.dll` | `libjxl.dll` and friends | MinGW runtime |
+| `libstdc++-6.dll` | `libjxl.dll`, `libhwy.dll` | MinGW runtime |
+| `libwinpthread-1.dll` | `libstdc++-6.dll`, `libgcc_s_dw2-1.dll` | MinGW runtime |
+
+The three MinGW runtime DLLs appear because a stock `mingw-w64-i686-libjxl` is not built with
+`-static-libgcc -static-libstdc++`. You can drop them and `liblcms2-2.dll` only if you replace
+`libjxl.dll`/`libjxl_cms.dll` with fully static builds.
+
+**Do not rely on `PATH` to supply any of these.** `liblcms2-2.dll` in particular is present in
+`C:\msys64\mingw32\bin`, so a game launched from an MSYS2 shell will appear to work while the very
+same install fails when the user double-clicks the launcher. Ship all ten in the game root.
+
+To confirm a deployment, run `scripts\check_runtime_deps.ps1 -GameDir <game> -RequireLav`. It walks the
+import closure from `jxl_hook.dll` / `av1_hook.dll` outwards through the PE import tables (standard and
+delay-load) and reports every non-system DLL that does not resolve from the game directory — which is
+the failure mode above. A 64-bit PowerShell cannot test this by calling `LoadLibrary` on these 32-bit
+DLLs; that returns `err=193` and proves nothing.
 
 ---
 
