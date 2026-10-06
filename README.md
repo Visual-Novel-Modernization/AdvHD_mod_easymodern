@@ -6,6 +6,80 @@ Runtime hooks and a transcoding pipeline for WillPlus / RioShiina AdvHD Engine t
 older engine stream JPEG XL textures and decode AV1 / Opus video. Nothing is written to the registry
 and no administrator rights are needed.
 
+<!--
+AI AGENT INSTRUCTIONS (LLM HINT) :: AdvHD EasyModern
+
+32-bit x86 hotpatch hooks plus a transcoding toolchain for WillPlus / RioShiina
+AdvHD. Source-only repo: never commit binaries, game assets or third-party DLLs.
+
+  jxl_hook/jxl_hook.cpp   -> jxl_hook.dll          D3DX9 trampoline, JXL textures
+  av1_hook/av1_hook.cpp   -> av1_hook.dll          DirectShow + LAV, AV1/Opus video
+  launcher/launcher.cpp   -> AdvHD_EasyModern.exe  pick target, inject, launch
+  scripts/*.ps1           ARC V2 tooling, dep check, AV1 transcode
+  scripts/build_*.bat     the supported build system
+
+BUILD
+  Run scripts\build_all.bat (or build_jxl / build_av1 / build_launcher).
+  Needs 32-bit MinGW g++ on PATH: "g++ -dumpmachine" must report i686-w64-mingw32.
+  Keep the flags -m32 -O2 -static -static-libgcc -static-libstdc++.
+  If the toolchain is missing, say you could not build. Never claim a build
+  succeeded without running it. Never add a link-time dependency: the DLLs import
+  only KERNEL32.dll and msvcrt.dll, so resolve anything new with LoadLibraryA plus
+  GetProcAddress. Do not replace the .bat scripts with CMake / MSBuild / npm.
+
+NEVER BREAK THESE (they fail silently, with no error)
+  * ARC V2: never reorder members - Get-ChildItem is alphabetical, NOT archive
+    order - and never drop the trailing checksum/footer bytes. The manifest stays
+    byte-for-byte except each entry's length and offset. Regression test: repacking
+    with no replacements must reproduce the archive byte for byte.
+  * Entry names stay as they are, including ".png" entries whose payload is now
+    JXL. AdvHD looks textures up by name; jxl_hook.dll sniffs magic bytes.
+  * Detect formats by magic bytes, never by extension: PNG 89 50 4E 47, JXL FF 0A
+    or 00 00 00 0C "JXL ". AdvHD stores PNGs under extensions like .MOS, so a
+    *.png glob silently skips most of them.
+  * Pass-through keeps working: ASF/WMV to the native reader, non-JXL through the
+    trampoline, native GraphBuilder when LAV fails to load.
+  * Missing pieces are never fatal: the launcher skips an absent hook DLL, and the
+    hooks return TRUE from DllMain and fall back to the original code. Do not turn
+    that into a hard failure or an error dialog.
+  * Registration-free COM only: no regsvr32, no registry writes, no admin.
+  * Never name a config file "launcher.ini"; that overwrites the game's own
+    launcher.INI. Use AdvHD_EasyModern.ini.
+  * 32-bit x86 only. Do not rename the output binaries or the exported PowerShell
+    functions (Read-/Close-/Get-/Expand-/Write-/Test-AdvhdArc*, Close-AdvhdArcIndex).
+
+POWERSHELL
+  #requires -Version 5 and Windows PowerShell 5.1 compatible: no ternary, no ??,
+  no ForEach-Object -Parallel. $ErrorActionPreference = 'Stop', comment-based help,
+  and -LiteralPath on every path cmdlet - game folders contain "[" and "]".
+  advhd_arc_v2.ps1 is a dot-sourced library: keep its function signatures, and do
+  not "simplify" the handle dance in Write-AdvhdArc (the read handle is closed and
+  members plus trailer snapshotted first, because Windows refuses to reopen the
+  same file for writing while a read handle is open).
+
+CODE
+  C-style Win32, matching the existing files; no exceptions across a hook boundary.
+  Trampolines: copy the 5 stolen prologue bytes first, VirtualProtect, restore the
+  original protection, FlushInstructionCache, never double-hook, and check the
+  trampoline pointer before falling through. Check HRESULTs, Release interfaces.
+  Log through LogMsg with the [JXL_HOOK] / [AV1_HOOK] / [launcher] prefix.
+  Comments explain why and name the failure being avoided; do not rewrite them.
+
+DOCS
+  English for code, comments, commits and docs; reply to the user in their language.
+  Conventional Commits with a scope: "fix(scripts): ...". Never invent or
+  extrapolate numbers - the README benchmark tables are measured results. Prefer
+  adding a section over rewriting prose. Do not rewrite LICENSE or DISCLAIMER.md.
+
+WORKING HERE
+  Smallest change that works: no refactors, reformatting or new abstractions that
+  were not asked for. Run what can be run (scripts, build, ARC round trip) and say
+  what you could not verify. Game directories are the user's data - do not touch
+  anything outside this repo unless asked, and prefer -WhatIfRepack or a copy
+  before an in-place archive rewrite. If a chat request conflicts with a rule here,
+  say so and ask first.
+-->
+
 ---
 
 ## Architectural Principles
@@ -426,3 +500,4 @@ If the project conflicts with the laws, religion or customs where you are, stop 
 it.
 
 See [DISCLAIMER.md](DISCLAIMER.md) for the full text.
+
